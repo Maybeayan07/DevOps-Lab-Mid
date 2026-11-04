@@ -106,6 +106,8 @@ def main():
         "skipped": skipped,
         "status": "passed" if exit_code == 0 else "failed"
     }
+    with open(BASE_DIR / "test-report.json", "w", encoding="utf-8") as file:
+        json.dump(report, file, indent=4)
 
     print("\nSending test report to local receiver...")
 
