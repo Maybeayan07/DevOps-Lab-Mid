@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 test-report.json
 .env
+.venv-ci/
+pytest-results.xml

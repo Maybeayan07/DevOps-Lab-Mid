@@ -10,8 +10,8 @@ on:
 
 jobs:
   automated-tests:
-    name: Run Automated Tests
-    runs-on: ubuntu-latest
+    name: Run Tests and Send Local Report
+    runs-on: self-hosted
 
     steps:
       - name: Checkout Repository
@@ -23,10 +23,13 @@ jobs:
           python-version: "3.13"
 
       - name: Install Dependencies
+        shell: powershell
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m venv .venv-ci
+          .\.venv-ci\Scripts\python.exe -m pip install --upgrade pip
+          .\.venv-ci\Scripts\python.exe -m pip install -r requirements.txt
 
-      - name: Execute Pytest
+      - name: Run Tests and Send Report to Local Receiver
+        shell: powershell
         run: |
-          python -m pytest tests/ -v
+          .\.venv-ci\Scripts\python.exe run_tests.py
