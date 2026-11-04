@@ -38,7 +38,14 @@ jobs:
         shell: powershell
         run: |
           .\.venv-ci\Scripts\python.exe run_tests.py
-
+      - name: Email Test Report
+        if: always()
+        shell: powershell
+        env:
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          .\.venv-ci\Scripts\python.exe send_email.py
   deploy:
     name: Deploy to GitHub Pages
     needs: automated-tests
