@@ -18,7 +18,7 @@ def validate_submission(data):
 
     parsed_url = urlparse(submission_url)
 
-    if parsed_url.scheme in ("http", "https") or not parsed_url.netloc:
+    if parsed_url.scheme not in ("http", "https") or not parsed_url.netloc:
         return False, "Please enter a valid HTTP or HTTPS URL."
 
     return True, "Submission successful."
