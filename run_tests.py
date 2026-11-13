@@ -106,7 +106,10 @@ def main():
         "skipped": skipped,
         "status": "passed" if exit_code == 0 else "failed"
     }
-    with open(BASE_DIR / "test-report.json", "w", encoding="utf-8") as file:
+
+    report_file = BASE_DIR / "test-report.json"
+
+    with open(report_file, "w", encoding="utf-8") as file:
         json.dump(report, file, indent=4)
 
     print("\nSending test report to local receiver...")
@@ -124,7 +127,7 @@ def main():
         with urllib.request.urlopen(req, timeout=10) as response:
             print(response.read().decode("utf-8"))
 
-        except (urllib.error.URLError, TimeoutError) as error:
+    except (urllib.error.URLError, TimeoutError) as error:
         print(f"WARNING: Could not deliver report to local receiver: {error}")
         print("Continuing because local report receiver is optional.")
 
