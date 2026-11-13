@@ -35,6 +35,15 @@ def validate_submission(data):
         if not parsed_url.hostname:
             return False, "Please enter a valid HTTP or HTTPS URL."
 
+        # Validate hostname format
+        hostname = parsed_url.hostname
+
+        if "." not in hostname:
+            return False, "Please enter a valid URL with a domain name."
+
+        if any(char.isspace() for char in hostname):
+            return False, "URL cannot contain spaces."
+
         # Validate malformed port numbers
         _ = parsed_url.port
 
@@ -50,7 +59,9 @@ def validate_submission(data):
 def send_submission_email(submission):
 
     username = os.getenv("GMAIL_USERNAME", "").strip()
-    app_password = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "")
+    app_password = os.getenv(
+        "GMAIL_APP_PASSWORD", ""
+    ).replace(" ", "")
 
     if not username or not app_password:
         print("GMAIL ERROR: Credentials are missing.")
@@ -78,7 +89,9 @@ Status: Successfully Submitted.
     try:
         print("Connecting to Gmail SMTP server...")
 
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as server:
+        with smtplib.SMTP(
+            "smtp.gmail.com", 587, timeout=20
+        ) as server:
 
             server.ehlo()
             server.starttls()
@@ -87,29 +100,21 @@ Status: Successfully Submitted.
             print("Authenticating Gmail account...")
 
             server.login(username, app_password)
-
             server.send_message(message)
 
         print("SUCCESS: Email notification sent.")
         return True
 
-    except smtplib.SMTPAuthenticationError as error:
-        print(
-            f"GMAIL AUTHENTICATION ERROR: "
-            f"{error.smtp_code} - {error.smtp_error}"
-        )
-        return False
-
     except smtplib.SMTPException as error:
-        print(f"GMAIL SMTP ERROR: {type(error).__name__}: {error}")
+        print(f"GMAIL SMTP ERROR: {error}")
         return False
 
     except OSError as error:
-        print(f"GMAIL CONNECTION ERROR: {type(error).__name__}: {error}")
+        print(f"GMAIL CONNECTION ERROR: {error}")
         return False
 
     except Exception as error:
-        print(f"UNEXPECTED EMAIL ERROR: {type(error).__name__}: {error}")
+        print(f"UNEXPECTED EMAIL ERROR: {error}")
         return False
 
 
@@ -120,66 +125,84 @@ Status: Successfully Submitted.
 def index():
 
     message = ""
+    message_type = ""
 
     if request.method == "POST":
 
-        received_url = request.form.get("submission_url", "").strip()
+        received_url = request.form.get(
+            "submission_url", ""
+        ).strip()
 
-        # Debugging information
         print("\n---------- NEW SUBMISSION ----------")
         print("RECEIVED URL:", repr(received_url))
 
-        valid, message = validate_submission(request.form)
+        valid, validation_message = validate_submission(
+            request.form
+        )
 
         print("VALIDATION RESULT:", valid)
-        print("VALIDATION MESSAGE:", message)
+        print("VALIDATION MESSAGE:", validation_message)
 
-        if valid:
+        # Reject invalid submissions
+        if not valid:
 
-            submission = {
-                "name": request.form["name"].strip(),
-                "reg_no": request.form["reg_no"].strip(),
-                "title": request.form["title"].strip(),
-                "submission_url": received_url
-            }
-
-            submissions.append(submission)
-
-            email_sent = send_submission_email(submission)
-
-            print("EMAIL STATUS:", email_sent)
+            print("SUBMISSION REJECTED.")
             print("------------------------------------\n")
 
-            return redirect(
-                url_for(
-                    "index",
-                    success=1,
-                    email="sent" if email_sent else "failed"
-                )
+            return render_template(
+                "index.html",
+                submissions=submissions,
+                message=validation_message,
+                message_type="error"
             )
 
-        print("SUBMISSION REJECTED.")
+        # Create submission only after validation
+        submission = {
+            "name": request.form["name"].strip(),
+            "reg_no": request.form["reg_no"].strip(),
+            "title": request.form["title"].strip(),
+            "submission_url": received_url
+        }
+
+        submissions.append(submission)
+
+        # Send email only for valid submissions
+        email_sent = send_submission_email(submission)
+
+        print("EMAIL STATUS:", email_sent)
         print("------------------------------------\n")
 
+        if email_sent:
+            return redirect(
+                url_for("index", result="success")
+            )
+
+        return redirect(
+            url_for("index", result="email_failed")
+        )
+
     # Display result messages
-    if request.args.get("success") == "1":
+    result = request.args.get("result")
 
-        if request.args.get("email") == "sent":
-            message = (
-                "Submission successful! "
-                "Email notification sent."
-            )
+    if result == "success":
+        message = (
+            "Submission successful! "
+            "Email notification sent."
+        )
+        message_type = "success"
 
-        else:
-            message = (
-                "Submission successful, but email notification failed. "
-                "Please check Gmail configuration."
-            )
+    elif result == "email_failed":
+        message = (
+            "Submission successful, but email notification failed. "
+            "Please check Gmail configuration."
+        )
+        message_type = "error"
 
     return render_template(
         "index.html",
         submissions=submissions,
-        message=message
+        message=message,
+        message_type=message_type
     )
 
 
