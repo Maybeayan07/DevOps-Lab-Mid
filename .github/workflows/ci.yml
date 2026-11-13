@@ -31,13 +31,33 @@ jobs:
         shell: powershell
         run: |
           python -m venv .venv-ci
-          .\.venv-ci\Scripts\python.exe -m pip install --upgrade pip
-          .\.venv-ci\Scripts\python.exe -m pip install -r requirements.txt
+
+          $python = Join-Path $PWD ".venv-ci\Scripts\python.exe"
+
+          if (!(Test-Path $python)) {
+              Write-Error "Virtual environment Python was not created."
+              exit 1
+          }
+
+          & $python -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & $python -m pip install -r requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run Tests and Send Report to Local Receiver
         shell: powershell
         run: |
-          .\.venv-ci\Scripts\python.exe run_tests.py
+          $python = Join-Path $PWD ".venv-ci\Scripts\python.exe"
+
+          if (!(Test-Path $python)) {
+              Write-Error "Virtual environment Python not found."
+              exit 1
+          }
+
+          & $python run_tests.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Email Test Report
         if: always()
         shell: powershell
@@ -45,7 +65,26 @@ jobs:
           GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
-          .\.venv-ci\Scripts\python.exe send_email.py
+          $python = Join-Path $PWD ".venv-ci\Scripts\python.exe"
+
+          if (!(Test-Path $python)) {
+              Write-Warning "Python environment unavailable. Skipping email."
+              exit 0
+          }
+
+          if (!(Test-Path "test-report.json")) {
+              Write-Warning "Test report not generated. Skipping email."
+              exit 0
+          }
+
+          if (!$env:GMAIL_USERNAME -or !$env:GMAIL_APP_PASSWORD) {
+              Write-Warning "Gmail secrets missing. Skipping email."
+              exit 0
+          }
+
+          & $python send_email.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   deploy:
     name: Deploy to GitHub Pages
     needs: automated-tests

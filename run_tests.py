@@ -124,9 +124,9 @@ def main():
         with urllib.request.urlopen(req, timeout=10) as response:
             print(response.read().decode("utf-8"))
 
-    except (urllib.error.URLError, TimeoutError) as error:
-        print(f"ERROR: Could not deliver report: {error}")
-        return 1
+        except (urllib.error.URLError, TimeoutError) as error:
+        print(f"WARNING: Could not deliver report to local receiver: {error}")
+        print("Continuing because local report receiver is optional.")
 
     print(f"\nTotal: {total}")
     print(f"Passed: {passed}")
