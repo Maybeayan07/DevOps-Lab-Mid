@@ -41,6 +41,11 @@
             border-radius: 6px;
         }
 
+        input:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
         button {
             width: 100%;
             padding: 13px;
@@ -58,8 +63,9 @@
 
         .message {
             text-align: center;
-            color: green;
+            color: #15803d;
             margin: 15px 0;
+            font-weight: bold;
         }
 
         .submission {
@@ -74,10 +80,17 @@
             color: #2563eb;
             overflow-wrap: anywhere;
         }
+
+        hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 25px 0;
+        }
     </style>
 </head>
 
 <body>
+
 <div class="container">
 
     <h1>Assignment Submission Portal</h1>
@@ -87,20 +100,36 @@
     <form method="POST">
 
         <label>Student Name</label>
-        <input type="text" name="name"
-               placeholder="Enter your name" required>
+        <input
+            type="text"
+            name="name"
+            placeholder="Enter your name"
+            required
+        >
 
         <label>Registration Number</label>
-        <input type="text" name="reg_no"
-               placeholder="Enter registration number" required>
+        <input
+            type="text"
+            name="reg_no"
+            placeholder="Enter registration number"
+            required
+        >
 
         <label>Assignment Title</label>
-        <input type="text" name="title"
-               placeholder="Enter assignment title" required>
+        <input
+            type="text"
+            name="title"
+            placeholder="Enter assignment title"
+            required
+        >
 
         <label>Submission URL</label>
-        <input type="url" name="submission_url"
-               placeholder="https://example.com" required>
+        <input
+            type="text"
+            name="submission_url"
+            placeholder="https://example.com"
+            required
+        >
 
         <button type="submit">Submit Assignment</button>
 
@@ -120,11 +149,22 @@
 
             <div class="submission">
 
-                <strong>Student:</strong> {{ submission.name }}<br>
-                <strong>Registration:</strong> {{ submission.reg_no }}<br>
-                <strong>Assignment:</strong> {{ submission.title }}<br>
+                <strong>Student:</strong>
+                {{ submission.name }}<br>
+
+                <strong>Registration:</strong>
+                {{ submission.reg_no }}<br>
+
+                <strong>Assignment:</strong>
+                {{ submission.title }}<br>
+
                 <strong>URL:</strong>
-                <a href="{{ submission.submission_url }}" target="_blank">
+
+                <a
+                    href="{{ submission.submission_url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
                     {{ submission.submission_url }}
                 </a>
 
@@ -141,5 +181,6 @@
     {% endif %}
 
 </div>
+
 </body>
 </html>
