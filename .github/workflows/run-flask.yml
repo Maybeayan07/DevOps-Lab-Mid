@@ -1,0 +1,79 @@
+name: Run Flask App
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  start-flask:
+    name: Start Local Flask Website
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Dependencies
+        shell: powershell
+        run: |
+          python -m venv .venv-flask
+          $python = Join-Path $PWD ".venv-flask\Scripts\python.exe"
+
+          & $python -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & $python -m pip install -r requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Start Flask in Background
+        shell: powershell
+        env:
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          $existing = Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue
+
+          if ($existing) {
+              Write-Host "A service is already listening on port 5000."
+              Write-Host "Check http://127.0.0.1:5000"
+              exit 0
+          }
+
+          $python = Join-Path $PWD ".venv-flask\Scripts\python.exe"
+          $log = Join-Path $env:RUNNER_TEMP "flask-app.log"
+          $errorLog = Join-Path $env:RUNNER_TEMP "flask-app-error.log"
+
+          $process = Start-Process `
+              -FilePath $python `
+              -ArgumentList @("-m", "flask", "--app", "app", "run", "--host", "127.0.0.1", "--port", "5000", "--no-reload") `
+              -WorkingDirectory $PWD `
+              -WindowStyle Hidden `
+              -RedirectStandardOutput $log `
+              -RedirectStandardError $errorLog `
+              -PassThru
+
+          Start-Sleep -Seconds 5
+
+          if ($process.HasExited) {
+              Write-Host "Flask failed to start."
+              if (Test-Path $errorLog) { Get-Content $errorLog }
+              exit 1
+          }
+
+          $listener = Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue
+
+          if (!$listener) {
+              Write-Host "Flask process started but port 5000 is not listening."
+              if (Test-Path $errorLog) { Get-Content $errorLog }
+              exit 1
+          }
+
+          Write-Host "Flask application started successfully."
+          Write-Host "Local URL: http://127.0.0.1:5000"
