@@ -70,10 +70,24 @@ jobs:
           $listener = Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue
 
           if (!$listener) {
-              Write-Host "Flask process started but port 5000 is not listening."
-              if (Test-Path $errorLog) { Get-Content $errorLog }
-              exit 1
-          }
+    Write-Host "Flask process started but port 5000 is not listening."
+
+    Write-Host "`n--- FLASK STANDARD OUTPUT ---"
+    if (Test-Path $log) {
+        Get-Content $log
+    }
+
+    Write-Host "`n--- FLASK ERROR OUTPUT ---"
+    if (Test-Path $errorLog) {
+        Get-Content $errorLog
+    }
+
+    Write-Host "`n--- PROCESS STATUS ---"
+    Get-Process -Id $process.Id -ErrorAction SilentlyContinue |
+        Format-List Id, ProcessName, HasExited
+
+    exit 1
+}
 
           Write-Host "Flask application started successfully."
           Write-Host "Local URL: http://127.0.0.1:5000"
