@@ -1,3 +1,4 @@
+
 name: Run Flask App
 
 on:
@@ -12,84 +13,34 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install Dependencies
+      - name: Start Windows Scheduled Task
         shell: powershell
         run: |
-          python -m venv .venv-flask
-          $python = Join-Path $PWD ".venv-flask\Scripts\python.exe"
+          Write-Host "Starting DevOps Flask application..."
 
-          & $python -m pip install --upgrade pip
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          schtasks.exe /Run /TN "\DevOps-Flask-App"
 
-          & $python -m pip install -r requirements.txt
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Start Flask in Background
-        shell: powershell
-        env:
-          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        run: |
-          $existing = Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue
-
-          if ($existing) {
-              Write-Host "A service is already listening on port 5000."
-              Write-Host "Check http://127.0.0.1:5000"
-              exit 0
+          if ($LASTEXITCODE -ne 0) {
+              throw "Could not start the Windows Scheduled Task."
           }
 
-          $python = Join-Path $PWD ".venv-flask\Scripts\python.exe"
-          $log = Join-Path $env:RUNNER_TEMP "flask-app.log"
-          $errorLog = Join-Path $env:RUNNER_TEMP "flask-app-error.log"
+          $deadline = (Get-Date).AddSeconds(30)
+          $listener = $null
 
-          $process = Start-Process `
-              -FilePath $python `
-              -ArgumentList @("-m", "flask", "--app", "app", "run", "--host", "127.0.0.1", "--port", "5000", "--no-reload") `
-              -WorkingDirectory $PWD `
-              -WindowStyle Hidden `
-              -RedirectStandardOutput $log `
-              -RedirectStandardError $errorLog `
-              -PassThru
+          do {
+              Start-Sleep -Seconds 2
 
-          Start-Sleep -Seconds 5
+              $listener = Get-NetTCPConnection `
+                  -LocalPort 5000 `
+                  -State Listen `
+                  -ErrorAction SilentlyContinue
 
-          if ($process.HasExited) {
-              Write-Host "Flask failed to start."
-              if (Test-Path $errorLog) { Get-Content $errorLog }
-              exit 1
-          }
+          } while (!$listener -and (Get-Date) -lt $deadline)
 
-          $listener = Get-NetTCPConnection -LocalPort 5000 -State Listen -ErrorAction SilentlyContinue
-
-          
           if (!$listener) {
-              Write-Host "Flask process started but port 5000 is not listening."
-
-              Write-Host "`n--- FLASK STANDARD OUTPUT ---"
-              if (Test-Path $log) {
-                  Get-Content $log
-              }
-
-              Write-Host "`n--- FLASK ERROR OUTPUT ---"
-              if (Test-Path $errorLog) {
-                  Get-Content $errorLog
-              }
-
-              Write-Host "`n--- PROCESS STATUS ---"
-              Get-Process -Id $process.Id -ErrorAction SilentlyContinue |
-                  Format-List Id, ProcessName, HasExited
-
-              exit 1
+              schtasks.exe /Query /TN "\DevOps-Flask-App" /V /FO LIST
+              throw "Flask did not start on port 5000."
           }
 
-
-          Write-Host "Flask application started successfully."
+          Write-Host "Flask application is running!"
           Write-Host "Local URL: http://127.0.0.1:5000"
